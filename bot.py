@@ -3,7 +3,7 @@ import telebot
 from flask import Flask
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton, WebAppInfo
 
-bot = telebot.TeleBot(os.environ["8671616808:AAHXsTvOKEyA_qYdGpaRTgVZsj-Ry9gzqHs"])
+bot = telebot.TeleBot(os.environ["BOT_TOKEN"])
 app = Flask(__name__)
 
 @app.route("/")
