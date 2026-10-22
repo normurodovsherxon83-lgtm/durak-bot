@@ -23,3 +23,16 @@ def new_game(size=36, players=2):
     hands = [[deck.pop(0) for _ in range(n)] for _ in range(players)]
     return {"deck": deck, "trump": trump_card[-1],
             "trump_card": trump_card, "hands": hands}
+    def power(card, size=36):
+    return RANKS[size].index(card[:-1])
+
+def can_beat(att, dfn, trump, size=36):
+    aj = att.startswith("🃏")
+    dj = dfn.startswith("🃏")
+    if aj:
+        return dj and dfn > att
+    if dj:
+        return True
+    if dfn[-1] == att[-1]:
+        return power(dfn, size) > power(att, size)
+    return dfn[-1] == trump and att[-1] != trump
