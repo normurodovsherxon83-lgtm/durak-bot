@@ -11,6 +11,7 @@ from flask import Blueprint, jsonify, request
 from db import get_player, save_result
 from durak import MIN_STAKE
 from tables import Lobby
+from bonus import claim_daily, top as top_players
 
 api = Blueprint("api", __name__)
 lobby = Lobby()
@@ -180,3 +181,20 @@ def act(user, body):
     if not ok:
         return err(msg)
     return jsonify(ok=True, state=t.state_for(user["id"]))
+
+
+@api.route("/api/daily", methods=["POST", "OPTIONS"])
+@auth
+def daily(user, body):
+    get_player(user["id"], user.get("first_name", ""))
+    ok, msg, bal = claim_daily(user["id"])
+    return jsonify(ok=ok, message=msg, balance=bal)
+
+
+@api.route("/api/top", methods=["POST", "OPTIONS"])
+@auth
+def top_list(user, body):
+    by = body.get("by")
+    if by not in ("points", "balance"):
+        by = "points"
+    return jsonify(ok=True, players=top_players(by))
