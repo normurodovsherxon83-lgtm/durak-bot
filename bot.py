@@ -4,10 +4,12 @@ from flask import Flask
 from telebot.types import (ReplyKeyboardMarkup, KeyboardButton,
                            MenuButtonWebApp, WebAppInfo)
 from db import get_player
+from bonus import exists, add_referral, INVITE
 from api import api
 
 SITE = "https://normurodovsherxon83-lgtm.github.io/durak-app/"
 ADMIN = "@axrtge"
+BOT_USER = "durak_xbot"
 
 bot = telebot.TeleBot(os.environ["BOT_TOKEN"])
 app = Flask(__name__)
@@ -38,6 +40,7 @@ RULES = (
 def menu():
     kb = ReplyKeyboardMarkup(resize_keyboard=True)
     kb.row(KeyboardButton("📖 Qoidalar"), KeyboardButton("📞 Murojaat"))
+    kb.row(KeyboardButton("🎁 Do'st taklif qilish"))
     return kb
 
 
@@ -48,8 +51,24 @@ def home():
 
 @bot.message_handler(commands=["start"])
 def start(m):
+    uid = m.from_user.id
+    inviter = None
+    parts = (m.text or "").split()
+    if len(parts) > 1 and parts[1].startswith("ref_"):
+        try:
+            inviter = int(parts[1][4:])
+        except ValueError:
+            inviter = None
     try:
-        get_player(m.from_user.id, m.from_user.first_name or "")
+        is_new = not exists(uid)
+        get_player(uid, m.from_user.first_name or "")
+        if inviter and is_new and add_referral(uid, inviter):
+            try:
+                bot.send_message(
+                    inviter,
+                    f"🎉 Do'stingiz qo'shildi! +{INVITE} pul berildi.")
+            except Exception as e:
+                print("Taklif xabari xato:", e)
     except Exception as e:
         print("DB xato:", e)
     bot.send_message(m.chat.id,
@@ -67,6 +86,16 @@ def rules(m):
 def contact(m):
     bot.send_message(m.chat.id,
                      f"✉️ Savol, taklif yoki shikoyat uchun adminga yozing: {ADMIN}",
+                     reply_markup=menu())
+
+
+@bot.message_handler(func=lambda m: m.text == "🎁 Do'st taklif qilish")
+def invite(m):
+    link = f"https://t.me/{BOT_USER}?start=ref_{m.from_user.id}"
+    bot.send_message(m.chat.id,
+                     f"🎁 Do'stingizni taklif qiling, u birinchi marta "
+                     f"kirsa sizga +{INVITE} pul beriladi.\n\n"
+                     f"Sizning havolangiz:\n{link}",
                      reply_markup=menu())
 
 
