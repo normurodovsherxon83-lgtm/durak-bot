@@ -157,6 +157,36 @@ class Game:
         return left[0] if left else None
 
 
+MIN_STAKE = 10
+
+
+def can_join(balance, stake):
+    """Stavka kamida 10 va balans yetarli bo'lishi kerak."""
+    return stake >= MIN_STAKE and balance >= stake
+
+
+def settle(stake, balances, durak_index):
+    """
+    O'yin oxiridagi hisob-kitob.
+    Durak stavka miqdorini yo'qotadi, yutganlar uni teng bo'lishadi.
+    Ochko = olingan pul ulushi / 10.
+    Qaytaradi: (yangi balanslar, ochkolar ro'yxati).
+    Durang bo'lsa (durak_index None) hech narsa o'zgarmaydi.
+    """
+    n = len(balances)
+    new = list(balances)
+    points = [0.0] * n
+    if durak_index is None:
+        return new, points
+    winners = [p for p in range(n) if p != durak_index]
+    share = round(stake / len(winners), 2)
+    new[durak_index] -= stake
+    for p in winners:
+        new[p] += share
+        points[p] = round(share / 10, 2)
+    return new, points
+
+
 if __name__ == "__main__":
     # tez sinov: tasodifiy o'ynaydigan o'yin
     for size in (24, 36, 54):
