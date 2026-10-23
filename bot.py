@@ -2,14 +2,23 @@ import os, threading
 import telebot
 from flask import Flask
 from telebot.types import (ReplyKeyboardMarkup, KeyboardButton,
-                           MenuButtonWebApp, WebAppInfo)
-from db import get_player
+                           MenuButtonWebApp, WebAppInfo,
+                           InlineKeyboardMarkup, InlineKeyboardButton,
+                           LabeledPrice)
+from db import get_player, add_balance
 from bonus import exists, add_referral, INVITE
 from api import api
 
 SITE = "https://normurodovsherxon83-lgtm.github.io/durak-app/"
 ADMIN = "@axrtge"
 BOT_USER = "durak_xbot"
+
+# Stars paketlari: kalit -> (Stars soni, beriladigan pul)
+PACKS = {
+    "s50": (50, 500),
+    "s100": (100, 1100),
+    "s250": (250, 3000),
+}
 
 bot = telebot.TeleBot(os.environ["BOT_TOKEN"])
 app = Flask(__name__)
@@ -40,7 +49,8 @@ RULES = (
 def menu():
     kb = ReplyKeyboardMarkup(resize_keyboard=True)
     kb.row(KeyboardButton("📖 Qoidalar"), KeyboardButton("📞 Murojaat"))
-    kb.row(KeyboardButton("🎁 Do'st taklif qilish"))
+    kb.row(KeyboardButton("🎁 Do'st taklif qilish"),
+           KeyboardButton("💰 Pul sotib olish"))
     return kb
 
 
@@ -97,6 +107,62 @@ def invite(m):
                      f"kirsa sizga +{INVITE} pul beriladi.\n\n"
                      f"Sizning havolangiz:\n{link}",
                      reply_markup=menu())
+
+
+# ---------- Telegram Stars orqali pul sotib olish ----------
+
+@bot.message_handler(func=lambda m: m.text == "💰 Pul sotib olish")
+def shop(m):
+    kb = InlineKeyboardMarkup()
+    for key, (stars, coins) in PACKS.items():
+        kb.add(InlineKeyboardButton(f"⭐ {stars} Stars → {coins} pul",
+                                    callback_data=f"buy_{key}"))
+    bot.send_message(m.chat.id,
+                     "💰 O'yin pulini Telegram Stars bilan sotib oling:",
+                     reply_markup=kb)
+
+
+@bot.callback_query_handler(func=lambda c: c.data.startswith("buy_"))
+def buy(c):
+    key = c.data[4:]
+    if key not in PACKS:
+        bot.answer_callback_query(c.id, "Xato paket")
+        return
+    stars, coins = PACKS[key]
+    bot.answer_callback_query(c.id)
+    bot.send_invoice(
+        chat_id=c.message.chat.id,
+        title=f"{coins} o'yin puli",
+        description=f"Durak X uchun {coins} pul",
+        invoice_payload=key,
+        provider_token="",
+        currency="XTR",
+        prices=[LabeledPrice(label=f"{coins} pul", amount=stars)],
+    )
+
+
+@bot.pre_checkout_query_handler(func=lambda q: True)
+def checkout(q):
+    bot.answer_pre_checkout_query(q.id, ok=True)
+
+
+@bot.message_handler(content_types=["successful_payment"])
+def paid(m):
+    key = m.successful_payment.invoice_payload
+    if key not in PACKS:
+        return
+    coins = PACKS[key][1]
+    try:
+        new = add_balance(m.from_user.id, coins)
+        bot.send_message(m.chat.id,
+                         f"✅ To'lov qabul qilindi! +{coins} pul.\n"
+                         f"Yangi balans: {new}",
+                         reply_markup=menu())
+    except Exception as e:
+        print("To'lov xato:", e)
+        bot.send_message(m.chat.id,
+                         f"⚠️ To'lov o'tdi, lekin pul qo'shilmadi. "
+                         f"Adminga yozing: {ADMIN}")
 
 
 threading.Thread(target=bot.infinity_polling, daemon=True).start()
