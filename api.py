@@ -16,6 +16,8 @@ from bonus import claim_daily, top as top_players
 api = Blueprint("api", __name__)
 lobby = Lobby()
 saved = set()
+bot_games = {}
+BOT_DAILY_LIMIT = 20
 ORIGIN = "https://normurodovsherxon83-lgtm.github.io"
 
 
@@ -198,3 +200,32 @@ def top_list(user, body):
     if by not in ("points", "balance"):
         by = "points"
     return jsonify(ok=True, players=top_players(by))
+
+
+@api.route("/api/result", methods=["POST", "OPTIONS"])
+@auth
+def result(user, body):
+    try:
+        stake = int(body.get("stake", 0))
+        n = int(body.get("players", 2))
+    except (TypeError, ValueError):
+        return err("Noto'g'ri ma'lumot")
+    lost = bool(body.get("lost"))
+    if stake < MIN_STAKE or not 2 <= n <= 6:
+        return err("Noto'g'ri ma'lumot")
+    key = (user["id"], time.strftime("%Y%m%d"))
+    if bot_games.get(key, 0) >= BOT_DAILY_LIMIT:
+        return err("Bugungi limit tugadi")
+    p = get_player(user["id"], user.get("first_name", ""))
+    bal = float(p["balance"])
+    if stake > bal:
+        return err("Balans yetmaydi")
+    if lost:
+        new_bal, pts = bal - stake, 0
+    else:
+        share = stake / (n - 1)
+        new_bal, pts = bal + share, share / 10
+    bot_games[key] = bot_games.get(key, 0) + 1
+    save_result([user["id"]], [new_bal], [pts])
+    return jsonify(ok=True, balance=new_bal,
+                   points=float(p["points"]) + pts)
