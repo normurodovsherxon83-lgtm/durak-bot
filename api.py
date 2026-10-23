@@ -210,7 +210,11 @@ def result(user, body):
         n = int(body.get("players", 2))
     except (TypeError, ValueError):
         return err("Noto'g'ri ma'lumot")
-    lost = bool(body.get("lost"))
+    res = body.get("result")
+    if res not in ("win", "lose", "draw"):
+        return err("Noto'g'ri ma'lumot")
+    if res == "draw":
+        return jsonify(ok=True)
     if stake < MIN_STAKE or not 2 <= n <= 6:
         return err("Noto'g'ri ma'lumot")
     key = (user["id"], time.strftime("%Y%m%d"))
@@ -220,7 +224,7 @@ def result(user, body):
     bal = float(p["balance"])
     if stake > bal:
         return err("Balans yetmaydi")
-    if lost:
+    if res == "lose":
         new_bal, pts = bal - stake, 0
     else:
         share = stake / (n - 1)
