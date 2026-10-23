@@ -35,3 +35,11 @@ def top(by="points", limit=10):
     """Reyting: by='points' (ochko) yoki by='balance' (valyuta)."""
     return (db().table("players").select("name,balance,points")
             .order(by, desc=True).limit(limit).execute().data)
+
+
+def add_balance(tg_id, amount):
+    """Balansga pul qo'shadi (Stars to'lovi uchun)."""
+    p = get_player(tg_id)
+    new = int(p["balance"]) + amount
+    db().table("players").update({"balance": new}).eq("tg_id", tg_id).execute()
+    return new
