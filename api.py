@@ -21,7 +21,7 @@ BOT_DAILY_LIMIT = 20
 ORIGIN = "https://normurodovsherxon83-lgtm.github.io"
 
 
-# ---------- CORS (Mini App GitHub Pages'dan so'raydi) ----------
+# ---------- CORS ----------
 @api.before_request
 def preflight():
     if request.method == "OPTIONS":
@@ -146,7 +146,18 @@ def join(user, body):
     ok, msg = join_table(t, user)
     if not ok:
         return err(msg)
+    if t.status == "waiting" and len(t.players) >= t.max_players:
+        t.start()
     return jsonify(ok=True, state=t.state_for(user["id"]))
+
+
+@api.route("/api/leave", methods=["POST", "OPTIONS"])
+@auth
+def leave(user, body):
+    t = lobby.get(str(body.get("code", "")))
+    if t:
+        t.leave(user["id"])
+    return jsonify(ok=True)
 
 
 @api.route("/api/start", methods=["POST", "OPTIONS"])
@@ -168,6 +179,7 @@ def state(user, body):
     t = lobby.get(str(body.get("code", "")))
     if not t or t.index_of(user["id"]) is None:
         return err("Stol topilmadi", 404)
+    finish_if_done(t)
     return jsonify(ok=True, state=t.state_for(user["id"]))
 
 
