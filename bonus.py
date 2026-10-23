@@ -3,7 +3,7 @@ from datetime import datetime, timezone, timedelta
 from supabase import create_client
 
 sb = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_KEY"])
-DAILY = 100
+DAILY = 1000
 INVITE = 100
 
 
