@@ -5,24 +5,19 @@ from telebot.types import (ReplyKeyboardMarkup, KeyboardButton,
                            MenuButtonWebApp, WebAppInfo,
                            InlineKeyboardMarkup, InlineKeyboardButton,
                            LabeledPrice)
-from db import get_player, add_balance
+from db import get_player
 from bonus import exists, add_referral, INVITE
 from api import api
+from shop import shop, PACKS, deliver
 
 SITE = "https://normurodovsherxon83-lgtm.github.io/durak-app/"
 ADMIN = "@axrtge"
 BOT_USER = "durak_xbot"
 
-# Stars paketlari: kalit -> (Stars soni, beriladigan pul)
-PACKS = {
-    "s50": (50, 500),
-    "s100": (100, 1100),
-    "s250": (250, 3000),
-}
-
 bot = telebot.TeleBot(os.environ["BOT_TOKEN"])
 app = Flask(__name__)
 app.register_blueprint(api)
+app.register_blueprint(shop)
 
 # "Open" tugmasi (xabar yozish joyining yonida) saytni ochadi
 try:
@@ -112,7 +107,7 @@ def invite(m):
 # ---------- Telegram Stars orqali pul sotib olish ----------
 
 @bot.message_handler(func=lambda m: m.text == "💰 Pul sotib olish")
-def shop(m):
+def shop_menu(m):
     kb = InlineKeyboardMarkup()
     for key, (stars, coins) in PACKS.items():
         kb.add(InlineKeyboardButton(f"⭐ {stars} Stars → {coins} pul",
@@ -148,21 +143,16 @@ def checkout(q):
 
 @bot.message_handler(content_types=["successful_payment"])
 def paid(m):
-    key = m.successful_payment.invoice_payload
-    if key not in PACKS:
-        return
-    coins = PACKS[key][1]
     try:
-        new = add_balance(m.from_user.id, coins)
-        bot.send_message(m.chat.id,
-                         f"✅ To'lov qabul qilindi! +{coins} pul.\n"
-                         f"Yangi balans: {new}",
-                         reply_markup=menu())
+        bot.send_message(
+            m.chat.id,
+            deliver(m.from_user.id, m.successful_payment.invoice_payload),
+            reply_markup=menu())
     except Exception as e:
         print("To'lov xato:", e)
-        bot.send_message(m.chat.id,
-                         f"⚠️ To'lov o'tdi, lekin pul qo'shilmadi. "
-                         f"Adminga yozing: {ADMIN}")
+        bot.send_message(
+            m.chat.id,
+            f"⚠️ To'lov o'tdi, lekin yetkazilmadi. Adminga yozing: {ADMIN}")
 
 
 threading.Thread(target=bot.infinity_polling, daemon=True).start()
