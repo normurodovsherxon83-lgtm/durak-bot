@@ -157,12 +157,13 @@ class Game:
         return left[0] if left else None
 
 
-MIN_STAKE = 10
+MIN_STAKE = 100
+MAX_STAKE = 100000
 
 
 def can_join(balance, stake):
-    """Stavka kamida 10 va balans yetarli bo'lishi kerak."""
-    return stake >= MIN_STAKE and balance >= stake
+    """Stavka 100 dan 100 000 gacha bo'lishi va balans yetarli bo'lishi kerak."""
+    return MIN_STAKE <= stake <= MAX_STAKE and balance >= stake
 
 
 def settle(stake, balances, durak_index):
