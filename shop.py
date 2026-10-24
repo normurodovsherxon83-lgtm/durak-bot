@@ -216,3 +216,15 @@ def invoice():
               "prices": [{"label": title, "amount": stars}]},
         timeout=15).json()
     return jsonify(url=r.get("result")) if r.get("ok") else err("Invoice xato")
+
+
+# ---------- Admin panelni avtomatik ulash ----------
+def _reg_admin(state):
+    try:
+        import admin as _a
+        state.app.register_blueprint(_a.admin)
+    except Exception as e:
+        print("admin ulanmadi:", e)
+
+
+shop.record_once(_reg_admin)
