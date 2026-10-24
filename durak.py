@@ -157,20 +157,43 @@ class Game:
         return left[0] if left else None
 
 
+# Standart qiymatlar (admin paneldagi sozlama bo'lmasa shular ishlaydi)
 MIN_STAKE = 100
 MAX_STAKE = 100000
+POINTS_DIV = 10
+
+
+def _cfg(key, default):
+    """Admin paneldagi sozlamani oladi, bo'lmasa standart qiymat."""
+    try:
+        from admin import cfg
+        return int(cfg(key, default))
+    except Exception:
+        return default
+
+
+def min_stake():
+    return _cfg("min_stake", MIN_STAKE)
+
+
+def max_stake():
+    return _cfg("max_stake", MAX_STAKE)
+
+
+def points_div():
+    return _cfg("points_div", POINTS_DIV) or POINTS_DIV
 
 
 def can_join(balance, stake):
-    """Stavka 100 dan 100 000 gacha bo'lishi va balans yetarli bo'lishi kerak."""
-    return MIN_STAKE <= stake <= MAX_STAKE and balance >= stake
+    """Stavka eng kam va eng ko'p chegara oralig'ida bo'lishi va balans yetarli bo'lishi kerak."""
+    return min_stake() <= stake <= max_stake() and balance >= stake
 
 
 def settle(stake, balances, durak_index):
     """
     O'yin oxiridagi hisob-kitob.
     Durak stavka miqdorini yo'qotadi, yutganlar uni teng bo'lishadi.
-    Ochko = olingan pul ulushi / 10.
+    Ochko = olingan pul ulushi / ochko bo'luvchi (standart 10).
     Qaytaradi: (yangi balanslar, ochkolar ro'yxati).
     Durang bo'lsa (durak_index None) hech narsa o'zgarmaydi.
     """
@@ -182,9 +205,10 @@ def settle(stake, balances, durak_index):
     winners = [p for p in range(n) if p != durak_index]
     share = round(stake / len(winners), 2)
     new[durak_index] -= stake
+    div = points_div()
     for p in winners:
         new[p] += share
-        points[p] = round(share / 10, 2)
+        points[p] = round(share / div, 2)
     return new, points
 
 
