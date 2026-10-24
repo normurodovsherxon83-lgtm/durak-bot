@@ -14,6 +14,11 @@ SITE = "https://normurodovsherxon83-lgtm.github.io/durak-app/"
 ADMIN = "@axrtge"
 BOT_USER = "durak_xbot"
 
+ADMIN_IDS = set()
+for _x in os.environ.get("ADMIN_IDS", "").replace(" ", "").split(","):
+    if _x.lstrip("-").isdigit():
+        ADMIN_IDS.add(int(_x))
+
 bot = telebot.TeleBot(os.environ["BOT_TOKEN"])
 app = Flask(__name__)
 app.register_blueprint(api)
@@ -31,7 +36,7 @@ RULES = (
     "📖 Durak qoidalari\n\n"
     "• Karta to'plami: 24, 36 yoki 54 talik\n"
     "• Stolda ko'pi bilan 6 o'yinchi\n"
-    "• O'yin oldidan stavka tanlanadi (kamida 10)\n"
+    "• O'yin oldidan stavka tanlanadi (kamida 100)\n"
     "• Durak (kartasi qolgan) stavkani to'laydi, "
     "pul yutganlarga teng bo'linadi\n"
     "• Ochko: olgan pul ulushining 1/10 qismi\n"
@@ -80,6 +85,18 @@ def start(m):
                      "Durak X o'yiniga xush kelibsiz! 🎴\n"
                      "O'ynash uchun pastdagi 🎮 tugmani bosing.",
                      reply_markup=menu())
+
+
+# ---------- Admin panel (faqat ADMIN_IDS) ----------
+
+@bot.message_handler(commands=["admin"])
+def admin_cmd(m):
+    if m.from_user.id not in ADMIN_IDS:
+        return
+    kb = InlineKeyboardMarkup()
+    kb.add(InlineKeyboardButton("⚙️ Admin panel",
+                                web_app=WebAppInfo(SITE + "admin.html")))
+    bot.send_message(m.chat.id, "Admin panelni ochish:", reply_markup=kb)
 
 
 @bot.message_handler(func=lambda m: m.text == "📖 Qoidalar")
