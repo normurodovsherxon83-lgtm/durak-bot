@@ -7,6 +7,23 @@ DAILY = 1000
 INVITE = 100
 
 
+def _cfg(key, default):
+    """Admin paneldagi sozlamani oladi, bo'lmasa standart qiymat."""
+    try:
+        from admin import cfg
+        return int(cfg(key, default))
+    except Exception:
+        return default
+
+
+def daily_amount():
+    return _cfg("daily_bonus", DAILY)
+
+
+def invite_amount():
+    return _cfg("referral_bonus", INVITE)
+
+
 def _row(tg_id):
     r = sb.table("players").select("*").eq("tg_id", tg_id).execute()
     return r.data[0] if r.data else None
@@ -31,11 +48,12 @@ def claim_daily(tg_id):
                 return False, f"Keyingi bonus ~{h} soatdan keyin", p["balance"]
         except ValueError:
             pass
-    bal = float(p["balance"]) + DAILY
+    amount = daily_amount()
+    bal = float(p["balance"]) + amount
     sb.table("players").update(
         {"balance": bal, "last_daily": now.isoformat()}
     ).eq("tg_id", tg_id).execute()
-    return True, f"+{DAILY} pul olindi", bal
+    return True, f"+{amount} pul olindi", bal
 
 
 def add_referral(new_id, inviter_id):
@@ -46,7 +64,7 @@ def add_referral(new_id, inviter_id):
         return False
     sb.table("players").update({"referred_by": inviter_id}).eq("tg_id", new_id).execute()
     sb.table("players").update(
-        {"balance": float(inviter["balance"]) + INVITE}
+        {"balance": float(inviter["balance"]) + invite_amount()}
     ).eq("tg_id", inviter_id).execute()
     return True
 
