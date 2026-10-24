@@ -9,7 +9,7 @@ from urllib.parse import parse_qsl
 from flask import Blueprint, jsonify, request
 
 from db import get_player, save_result
-from durak import MIN_STAKE
+from durak import min_stake, max_stake, points_div
 from tables import Lobby
 from bonus import claim_daily, top as top_players
 
@@ -19,10 +19,6 @@ saved = set()
 bot_games = {}
 BOT_DAILY_LIMIT = 20
 ORIGIN = "https://normurodovsherxon83-lgtm.github.io"
-
-# Stavka chegaralari
-STAKE_MIN = max(MIN_STAKE, 100)
-STAKE_MAX = 100000
 
 
 # ---------- CORS ----------
@@ -72,16 +68,21 @@ def err(msg, code=400):
     return jsonify(ok=False, error=msg), code
 
 
+def stake_msg():
+    return f"Noto'g'ri sozlama (stavka {min_stake()} dan {max_stake()} gacha)"
+
+
 def clean_params(body):
+    lo, hi = min_stake(), max_stake()
     try:
         size = int(body.get("size", 36))
-        stake = int(body.get("stake", STAKE_MIN))
+        stake = int(body.get("stake", lo))
         mx = int(body.get("max_players", 2))
     except (TypeError, ValueError):
         return None
     if size not in (24, 36, 54) or not 2 <= mx <= 6:
         return None
-    if stake < STAKE_MIN or stake > STAKE_MAX:
+    if stake < lo or stake > hi:
         return None
     return size, stake, mx
 
@@ -120,7 +121,7 @@ def me(user, body):
 def create(user, body):
     prm = clean_params(body)
     if not prm:
-        return err("Noto'g'ri sozlama (stavka 100 dan 100 000 gacha)")
+        return err(stake_msg())
     t = lobby.create(*prm, public=False)
     ok, msg = join_table(t, user)
     if not ok:
@@ -133,7 +134,7 @@ def create(user, body):
 def random_table(user, body):
     prm = clean_params(body)
     if not prm:
-        return err("Noto'g'ri sozlama (stavka 100 dan 100 000 gacha)")
+        return err(stake_msg())
     t = lobby.find_random(*prm)
     ok, msg = join_table(t, user)
     if not ok:
@@ -233,7 +234,7 @@ def result(user, body):
         return err("Noto'g'ri ma'lumot")
     if res == "draw":
         return jsonify(ok=True)
-    if stake < STAKE_MIN or stake > STAKE_MAX or not 2 <= n <= 6:
+    if stake < min_stake() or stake > max_stake() or not 2 <= n <= 6:
         return err("Noto'g'ri ma'lumot")
     key = (user["id"], time.strftime("%Y%m%d"))
     if bot_games.get(key, 0) >= BOT_DAILY_LIMIT:
@@ -246,7 +247,7 @@ def result(user, body):
         new_bal, pts = bal - stake, 0
     else:
         share = stake / (n - 1)
-        new_bal, pts = bal + share, share / 10
+        new_bal, pts = bal + share, share / points_div()
     bot_games[key] = bot_games.get(key, 0) + 1
     save_result([user["id"]], [new_bal], [pts])
     return jsonify(ok=True, balance=new_bal,
