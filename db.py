@@ -12,12 +12,21 @@ def db():
     return _client
 
 
+def _start_balance():
+    """Admin paneldagi boshlang'ich balans, bo'lmasa 100."""
+    try:
+        from admin import cfg
+        return int(cfg("start_balance", 100))
+    except Exception:
+        return 100
+
+
 def get_player(tg_id, name=""):
-    """O'yinchini oladi; yo'q bo'lsa 100 balans bilan yaratadi."""
+    """O'yinchini oladi; yo'q bo'lsa boshlang'ich balans bilan yaratadi."""
     res = db().table("players").select("*").eq("tg_id", tg_id).execute()
     if res.data:
         return res.data[0]
-    new = {"tg_id": tg_id, "name": name}
+    new = {"tg_id": tg_id, "name": name, "balance": _start_balance()}
     return db().table("players").insert(new).execute().data[0]
 
 
