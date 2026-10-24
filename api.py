@@ -20,6 +20,10 @@ bot_games = {}
 BOT_DAILY_LIMIT = 20
 ORIGIN = "https://normurodovsherxon83-lgtm.github.io"
 
+# Stavka chegaralari
+STAKE_MIN = max(MIN_STAKE, 100)
+STAKE_MAX = 100000
+
 
 # ---------- CORS ----------
 @api.before_request
@@ -71,11 +75,13 @@ def err(msg, code=400):
 def clean_params(body):
     try:
         size = int(body.get("size", 36))
-        stake = int(body.get("stake", MIN_STAKE))
+        stake = int(body.get("stake", STAKE_MIN))
         mx = int(body.get("max_players", 2))
     except (TypeError, ValueError):
         return None
-    if size not in (24, 36, 54) or stake < MIN_STAKE or not 2 <= mx <= 6:
+    if size not in (24, 36, 54) or not 2 <= mx <= 6:
+        return None
+    if stake < STAKE_MIN or stake > STAKE_MAX:
         return None
     return size, stake, mx
 
@@ -114,7 +120,7 @@ def me(user, body):
 def create(user, body):
     prm = clean_params(body)
     if not prm:
-        return err("Noto'g'ri sozlama")
+        return err("Noto'g'ri sozlama (stavka 100 dan 100 000 gacha)")
     t = lobby.create(*prm, public=False)
     ok, msg = join_table(t, user)
     if not ok:
@@ -127,7 +133,7 @@ def create(user, body):
 def random_table(user, body):
     prm = clean_params(body)
     if not prm:
-        return err("Noto'g'ri sozlama")
+        return err("Noto'g'ri sozlama (stavka 100 dan 100 000 gacha)")
     t = lobby.find_random(*prm)
     ok, msg = join_table(t, user)
     if not ok:
@@ -227,7 +233,7 @@ def result(user, body):
         return err("Noto'g'ri ma'lumot")
     if res == "draw":
         return jsonify(ok=True)
-    if stake < MIN_STAKE or not 2 <= n <= 6:
+    if stake < STAKE_MIN or stake > STAKE_MAX or not 2 <= n <= 6:
         return err("Noto'g'ri ma'lumot")
     key = (user["id"], time.strftime("%Y%m%d"))
     if bot_games.get(key, 0) >= BOT_DAILY_LIMIT:
